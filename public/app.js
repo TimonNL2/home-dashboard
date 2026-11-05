@@ -141,7 +141,7 @@ $('#search-form').addEventListener('submit', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   const typing = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
-  if (e.key === '/' && !typing) { e.preventDefault(); searchInput.focus(); }
+  if (e.key === '/' && !typing && !document.querySelector('dialog[open]')) { e.preventDefault(); ($('#view-world').hidden ? searchInput : $('#geo-input')).focus(); }
   if (e.key === 'Escape' && document.activeElement === searchInput) { searchInput.value = ''; searchInput.dispatchEvent(new Event('input')); searchInput.blur(); }
 });
 
@@ -299,6 +299,7 @@ $('#docker').addEventListener('click', async (e) => {
   refreshStatus(); setInterval(refreshStatus, 15000);
 
   const w = config.widgets;
+  if (w.world === false) document.querySelector('.tabs').hidden = true;
   if (w.weather !== false && config.weather && config.weather.enabled) {
     $('#weather-card').hidden = false; $('#weather-loc').textContent = config.weather.location;
     refreshWeather(); setInterval(refreshWeather, 10 * 60 * 1000);

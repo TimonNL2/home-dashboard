@@ -11,6 +11,12 @@ Een strak, snel en zelf-gehost startpagina-dashboard voor je homeserver. Draait 
 - **Docker-overzicht**: alle containers met status, optioneel starten/stoppen/herstarten.
 - **Weer**: actueel + 5 dagen via Open-Meteo (geen API-key nodig), met regenwaarschuwing voor de komende 3 uur.
 - **Takenlijst**: blijft bewaard in `./data`.
+- **Wereld-tabblad**: realistische 3D-wereldbol (NASA Blue Marble, reliëf, glimmende oceanen, sterrenhemel) waarop je plekken markeert:
+  - klik op de bol of zoek een stad (OpenStreetMap) om een plek toe te voegen
+  - soorten: 📍 bezocht, ⭐ wil heen, 🏠 thuis, met datum en notitie
+  - bezochte landen kleuren groen, met teller voor plekken, landen, continenten en "% van de wereld"
+  - geanimeerde reislijnen vanaf thuis, verste reis, klik in de lijst om ernaartoe te vliegen
+  - alles wordt opgeslagen in `./data/places.json`; de bol werkt ook zonder internet (alleen zoeken heeft internet nodig)
 - **Bladwijzers**: gegroepeerd, met favicons.
 - **Licht / donker / automatisch thema**, werkt op mobiel en is als app te installeren (PWA).
 - **Config hot-reload**: `config/config.yml` aanpassen, opslaan, pagina verversen. Geen herstart nodig.
@@ -59,7 +65,7 @@ Alles staat in `config/config.yml`; zie [`config.example.yml`](config.example.ym
 | `docker.allowActions` | `true` = start/stop/herstart-knoppen |
 | `services` | Groepen met apps. `icon` = naam uit [dashboard-icons](https://github.com/walkxcode/dashboard-icons), emoji, URL of `/icons/bestand.png` (in `config/icons/`) |
 | `check` | `false` = geen statuscheck, of een ander adres om te checken |
-| `widgets` | Losse widgets aan/uit |
+| `widgets` | Losse widgets aan/uit (`world: false` verbergt het Wereld-tabblad) |
 
 ### Omgevingsvariabelen
 

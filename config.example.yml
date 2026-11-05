@@ -34,6 +34,7 @@ widgets:
   docker: true
   todos: true
   bookmarks: true
+  world: true        # tabblad met de wereldbol
 
 # Iconen:
 #  - naam van https://github.com/walkxcode/dashboard-icons (bijv. "plex", "jellyfin")

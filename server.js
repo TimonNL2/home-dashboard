@@ -337,6 +337,103 @@ app.delete('/api/todos/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------- Wereldkaart: plekken ---------- */
+const PLACES_FILE = path.join(DATA_DIR, 'places.json');
+const PLACE_TYPES = ['visited', 'wish', 'home'];
+async function loadPlaces() {
+  try { return JSON.parse(await fsp.readFile(PLACES_FILE, 'utf8')); } catch { return []; }
+}
+async function savePlaces(places) {
+  const tmp = PLACES_FILE + '.tmp';
+  await fsp.writeFile(tmp, JSON.stringify(places, null, 2));
+  await fsp.rename(tmp, PLACES_FILE);
+}
+function cleanPlace(body, base = {}) {
+  const p = { ...base };
+  if (body.name !== undefined) p.name = String(body.name).trim().slice(0, 120);
+  if (body.note !== undefined) p.note = String(body.note).trim().slice(0, 1000);
+  if (body.date !== undefined) p.date = /^\d{4}(-\d{2}(-\d{2})?)?$/.test(body.date) ? body.date : '';
+  if (body.type !== undefined) p.type = PLACE_TYPES.includes(body.type) ? body.type : 'visited';
+  if (body.country !== undefined) p.country = String(body.country).slice(0, 80);
+  if (body.countryCode !== undefined) p.countryCode = String(body.countryCode).replace(/[^A-Z]/g, '').slice(0, 3);
+  if (body.lat !== undefined) p.lat = Math.max(-90, Math.min(90, Number(body.lat) || 0));
+  if (body.lng !== undefined) p.lng = Math.max(-180, Math.min(180, Number(body.lng) || 0));
+  return p;
+}
+
+app.get('/api/places', async (req, res) => res.json(await loadPlaces()));
+app.post('/api/places', async (req, res) => {
+  const p = cleanPlace(req.body || {}, { type: 'visited', note: '', date: '' });
+  if (!p.name || typeof p.lat !== 'number' || typeof p.lng !== 'number') return res.status(400).json({ error: 'naam en locatie zijn verplicht' });
+  p.id = crypto.randomUUID();
+  p.created = Date.now();
+  const places = await loadPlaces();
+  if (p.type === 'home') places.forEach((x) => { if (x.type === 'home') x.type = 'visited'; });
+  places.push(p);
+  await savePlaces(places);
+  res.json(p);
+});
+app.patch('/api/places/:id', async (req, res) => {
+  const places = await loadPlaces();
+  const i = places.findIndex((x) => x.id === req.params.id);
+  if (i < 0) return res.status(404).json({ error: 'niet gevonden' });
+  const p = cleanPlace(req.body || {}, places[i]);
+  if (!p.name) return res.status(400).json({ error: 'naam is verplicht' });
+  if (p.type === 'home') places.forEach((x) => { if (x.type === 'home' && x.id !== p.id) x.type = 'visited'; });
+  places[i] = p;
+  await savePlaces(places);
+  res.json(p);
+});
+app.delete('/api/places/:id', async (req, res) => {
+  await savePlaces((await loadPlaces()).filter((x) => x.id !== req.params.id));
+  res.json({ ok: true });
+});
+
+// Plaatsnaam zoeken via OpenStreetMap Nominatim (max 1 verzoek per seconde, met cache)
+const geoCache = new Map();
+let geoLast = 0;
+app.get('/api/geocode', async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 200);
+  if (q.length < 2) return res.json([]);
+  if (geoCache.has(q.toLowerCase())) return res.json(geoCache.get(q.toLowerCase()));
+  const wait = 1100 - (Date.now() - geoLast);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  geoLast = Date.now();
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ q, format: 'jsonv2', limit: '6', addressdetails: '1', 'accept-language': 'nl' });
+    const r = await fetch(url, { headers: { 'User-Agent': 'home-dashboard (self-hosted)' }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const out = (await r.json()).map((x) => ({
+      name: x.name || x.display_name.split(',')[0],
+      label: x.display_name,
+      lat: Number(x.lat),
+      lng: Number(x.lon),
+      country: x.address && x.address.country,
+      countryCode: x.address && x.address.country_code ? x.address.country_code.toUpperCase() : ''
+    }));
+    if (geoCache.size > 500) geoCache.clear();
+    geoCache.set(q.toLowerCase(), out);
+    res.json(out);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+/* ---------- Wereldbol bestanden (lokaal, werkt ook zonder internet) ---------- */
+function pkgDir(name) {
+  for (const p of [path.join(__dirname, 'node_modules', name), path.join(__dirname, 'node_modules/globe.gl/node_modules', name)]) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+const globeDir = pkgDir('globe.gl');
+const threeGlobeDir = pkgDir('three-globe');
+if (globeDir) {
+  app.get('/vendor/globe.gl.min.js', (req, res) => res.sendFile(path.join(globeDir, 'dist/globe.gl.min.js'), { maxAge: '7d' }));
+  app.get('/vendor/countries.geojson', (req, res) => res.sendFile(path.join(globeDir, 'example/datasets/ne_110m_admin_0_countries.geojson'), { maxAge: '7d' }));
+}
+if (threeGlobeDir) app.use('/vendor/img', express.static(path.join(threeGlobeDir, 'example/img'), { maxAge: '7d' }));
+
 /* ---------- Eigen iconen uit config/icons ---------- */
 app.use('/icons', express.static(path.join(CONFIG_DIR, 'icons'), { maxAge: '1d' }));
 app.use(express.static(path.join(__dirname, 'public')));

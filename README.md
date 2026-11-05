@@ -4,7 +4,7 @@ Een strak, snel en zelf-gehost startpagina-dashboard voor je homeserver. Draait 
 
 ## Functies
 
-- **Klok & begroeting**: "Goedemorgen, Timon" met datum.
+- **Hero met live aarde**: een langzaam draaiende 3D-aarde met dag en nacht volgens de echte zonnestand en stadslichten aan de nachtkant, met daarnaast klok, begroeting, het weer en de belangrijkste serverwaarden.
 - **Slimme zoekbalk**: druk op `/`. Typen filtert je services, `Enter` opent de eerste match, een URL of een zoekopdracht (DuckDuckGo/Google).
 - **Services met statuscheck**: groen/rood bolletje, responstijd en uptime-balkje van de laatste 30 checks. Zelf-ondertekende certificaten werken ook.
 - **Serverstatistieken**: CPU (met grafiekje), geheugen, schijven, temperatuur, netwerk up/down, uptime en load van de **host**.
@@ -65,7 +65,7 @@ Alles staat in `config/config.yml`; zie [`config.example.yml`](config.example.ym
 | `docker.allowActions` | `true` = start/stop/herstart-knoppen |
 | `services` | Groepen met apps. `icon` = naam uit [dashboard-icons](https://github.com/walkxcode/dashboard-icons), emoji, URL of `/icons/bestand.png` (in `config/icons/`) |
 | `check` | `false` = geen statuscheck, of een ander adres om te checken |
-| `widgets` | Losse widgets aan/uit (`world: false` verbergt het Wereld-tabblad) |
+| `widgets` | Losse widgets aan/uit (`world: false` verbergt het Wereld-tabblad, `earth: false` zet de aarde bovenaan uit) |
 
 ### Omgevingsvariabelen
 

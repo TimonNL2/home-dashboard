@@ -11,9 +11,9 @@
   };
 
   const TYPES = {
-    visited: { emoji: '📍', label: 'Bezocht', color: '#3ccf8e' },
-    wish: { emoji: '⭐', label: 'Wil heen', color: '#f2b84b' },
-    home: { emoji: '🏠', label: 'Thuis', color: '#7b93ff' }
+    visited: { icon: 'pin', label: 'Bezocht', color: '#7fd6a4' },
+    wish: { icon: 'star', label: 'Wil heen', color: '#e8b25a' },
+    home: { icon: 'home', label: 'Thuis', color: '#9cc3e6' }
   };
   const CONTINENTS_NL = {
     Africa: 'Afrika', Antarctica: 'Antarctica', Asia: 'Azië', Europe: 'Europa',
@@ -79,20 +79,12 @@
   }
 
   /* ---------- Wereldbol ---------- */
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('kon ' + src + ' niet laden'));
-      document.head.appendChild(s);
-    });
-  }
-
   let initPromise = null;
   function initWorld() {
     if (initPromise) { resize(); return initPromise; }
     initPromise = (async () => {
       try {
-        const [, geo, pl] = await Promise.all([loadScript('/vendor/globe.gl.min.js'), api('/vendor/countries.geojson'), api('/api/places')]);
+        const [, geo, pl] = await Promise.all([window.loadScriptOnce('/vendor/globe.gl.min.js'), api('/vendor/countries.geojson'), api('/api/places')]);
         countries = geo.features;
         places = pl;
         buildGlobe();
@@ -109,19 +101,16 @@
   function buildGlobe() {
     const el = $('#globe');
     globe = Globe({ animateIn: true })(el)
-      .globeImageUrl('/vendor/img/earth-blue-marble.jpg')
-      .bumpImageUrl('/vendor/img/earth-topology.png')
-      .backgroundImageUrl('/vendor/img/night-sky.png')
-      .showAtmosphere(true)
-      .atmosphereColor('#7fb2ff')
-      .atmosphereAltitude(0.2)
+      .backgroundImageUrl('/vendor/img/night-sky.png');
+    Earth.setup(globe, { atmosphere: 0.2 });
+    globe
       // Landen
       .polygonsData(countries)
       .polygonCapColor((f) => (visitedCodes().has(f.properties.ADM0_A3)
-        ? (f === hoverCountry ? 'rgba(60,207,142,.55)' : 'rgba(60,207,142,.35)')
+        ? (f === hoverCountry ? 'rgba(127,214,164,.5)' : 'rgba(127,214,164,.3)')
         : (f === hoverCountry ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,0)')))
       .polygonSideColor(() => 'rgba(0,0,0,0)')
-      .polygonStrokeColor((f) => (visitedCodes().has(f.properties.ADM0_A3) ? 'rgba(60,207,142,.9)' : 'rgba(255,255,255,.22)'))
+      .polygonStrokeColor((f) => (visitedCodes().has(f.properties.ADM0_A3) ? 'rgba(127,214,164,.85)' : 'rgba(255,255,255,.22)'))
       .polygonAltitude((f) => (f === hoverCountry ? 0.012 : 0.005))
       .polygonsTransitionDuration(200)
       .polygonLabel((f) => {
@@ -143,24 +132,8 @@
       .arcDashLength(0.5).arcDashGap(0.15).arcDashInitialGap(() => Math.random()).arcDashAnimateTime(3500)
       .arcAltitudeAutoScale(0.4)
       // Pulserende ring om thuis
-      .ringColor(() => (t) => `rgba(123,147,255,${1 - t})`)
+      .ringColor(() => (t) => `rgba(156,195,230,${1 - t})`)
       .ringMaxRadius(4).ringPropagationSpeed(2).ringRepeatPeriod(1400);
-
-    // Realistische glans op het water
-    globe.onGlobeReady(() => {
-      const mat = globe.globeMaterial();
-      const img = new Image();
-      img.onload = () => {
-        if (!mat.map) return;
-        const tex = new mat.map.constructor(img);
-        tex.needsUpdate = true;
-        mat.specularMap = tex;
-        if (mat.specular) mat.specular.set('#4a5a70');
-        mat.shininess = 14;
-        mat.needsUpdate = true;
-      };
-      img.src = '/vendor/img/earth-water.png';
-    });
 
     const controls = globe.controls();
     controls.autoRotateSpeed = 0.35;
@@ -196,8 +169,8 @@
     el.className = 'pin';
     el.dataset.id = p.id;
     el.style.setProperty('--c', t.color);
-    el.innerHTML = `<div class="head"><span>${t.emoji}</span></div><div class="lbl">${esc(p.name)}</div>`;
-    el.title = [p.name, p.country, p.date ? fmtDate(p.date) : '', p.note].filter(Boolean).join(' · ');
+    el.innerHTML = `<div class="lbl">${esc(p.name)}</div><div class="mk ${p.type}">${Icons.get(t.icon)}</div>`;
+    el.title = [p.name, p.country, p.date ? fmtDate(p.date) : '', p.note].filter(Boolean).join(', ');
     el.addEventListener('pointerdown', (e) => e.stopPropagation());
     el.addEventListener('click', (e) => { e.stopPropagation(); openDialog(p); });
     return el;
@@ -222,7 +195,7 @@
   $('#globe-home').addEventListener('click', () => {
     const home = places.find((p) => p.type === 'home');
     if (home) flyTo(home, 1.6);
-    else toast('Nog geen thuis ingesteld: klik op de bol en kies 🏠 Thuis');
+    else toast('Stel eerst een thuis in: klik op de aarde en kies Thuis');
   });
 
   function flyTo(p, altitude = 1.1) {
@@ -265,7 +238,7 @@
     let far = '';
     if (home) {
       const best = visited.filter((p) => p !== home).map((p) => ({ p, d: km(home, p) })).sort((a, b) => b.d - a.d)[0];
-      if (best) far = `<div class="prog muted">Verste plek vanaf thuis: <b style="display:inline;font-size:13px;color:var(--text)">${esc(best.p.name)}</b> · ${Math.round(best.d).toLocaleString('nl-NL')} km</div>`;
+      if (best) far = `<div class="prog muted">Verste plek vanaf thuis is <strong style="color:var(--text)">${esc(best.p.name)}</strong>, ${Math.round(best.d).toLocaleString('nl-NL')} km</div>`;
     }
     $('#world-stats').innerHTML = `
       <div><b>${visited.filter((p) => p.type === 'visited').length}</b><span>plekken</span></div>
@@ -275,7 +248,7 @@
         <div class="stat-row"><span>Wereld ontdekt</span><span>${pct}% van 195 landen</span></div>
         <div class="bar"><div style="width:${Math.max(pct, codes.size ? 1 : 0)}%;background:var(--ok)"></div></div>
       </div>
-      ${conts.size ? `<div class="prog muted">${[...conts].map((c) => CONTINENTS_NL[c]).sort().join(' · ')}</div>` : ''}
+      ${conts.size ? `<div class="prog muted">${[...conts].map((c) => CONTINENTS_NL[c]).sort().join(', ')}</div>` : ''}
       ${far}`;
   }
 
@@ -286,14 +259,14 @@
     $('#places-count').textContent = `${places.length}`;
     $('#places').innerHTML = list.length ? list.map((p) => `
       <li data-id="${esc(p.id)}">
-        <span class="em">${TYPES[p.type].emoji}</span>
+        <span class="em ${p.type}">${Icons.get(TYPES[p.type].icon)}</span>
         <div class="pi">
           <div class="pn">${esc(p.name)}</div>
-          <div class="pm">${esc([p.country, fmtDate(p.date)].filter(Boolean).join(' · ') || TYPES[p.type].label)}</div>
+          <div class="pm">${esc([p.country, fmtDate(p.date)].filter(Boolean).join(', ') || TYPES[p.type].label)}</div>
           ${p.note ? `<div class="pnote">${esc(p.note)}</div>` : ''}
         </div>
         <button class="edit" title="Bewerken" aria-label="Bewerken">✎</button>
-      </li>`).join('') : `<li class="empty" style="cursor:default">${places.length ? 'Niets in deze categorie' : 'Nog geen plekken. Klik op de wereldbol of zoek een stad om te beginnen ✈️'}</li>`;
+      </li>`).join('') : `<li class="empty" style="cursor:default">${places.length ? 'Niets in deze categorie' : 'Nog geen plekken. Klik op de aarde of zoek een stad om je eerste plek toe te voegen.'}</li>`;
   }
 
   function renderAll() { renderGlobeData(); renderStats(); renderList(); }
@@ -325,7 +298,7 @@
     const c = isNew ? countryAt(p.lat, p.lng) : null;
     const countryLabel = isNew ? (c ? countryName(c) : p.country || '') : p.country;
     $('#place-title').textContent = isNew ? 'Plek toevoegen' : 'Plek bewerken';
-    $('#place-coords').textContent = [countryLabel, `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`].filter(Boolean).join(' · ');
+    $('#place-coords').textContent = [countryLabel, `${p.lat.toFixed(3)}, ${p.lng.toFixed(3)}`].filter(Boolean).join(', ');
     form.name.value = p.name || '';
     form.date.value = p.date && p.date.length === 7 ? p.date : (p.date ? p.date.slice(0, 7) : '');
     form.note.value = p.note || '';
@@ -367,7 +340,7 @@
       places = await api('/api/places');
       closeDialog();
       renderAll();
-      toast(p.id ? 'Plek bijgewerkt' : `${body.name} toegevoegd ${TYPES[body.type].emoji}`);
+      toast(p.id ? 'Plek opgeslagen' : `${body.name} toegevoegd`);
     } catch (err) { toast('Opslaan mislukt: ' + err.message); }
   });
 

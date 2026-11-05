@@ -77,7 +77,7 @@ app.get('/api/config', (req, res) => {
     name: c.name || '',
     language: c.language || 'nl',
     search: c.search || { engine: 'https://duckduckgo.com/?q=' },
-    weather: c.weather ? { enabled: c.weather.enabled !== false, location: c.weather.name || '' } : { enabled: false },
+    weather: c.weather ? { enabled: c.weather.enabled !== false, location: c.weather.name || '', lat: Number(c.weather.latitude) || 0, lng: Number(c.weather.longitude) || 0 } : { enabled: false },
     widgets: c.widgets || {},
     services: (c.services || []).map((g) => ({
       group: g.group,
@@ -433,6 +433,16 @@ if (globeDir) {
   app.get('/vendor/countries.geojson', (req, res) => res.sendFile(path.join(globeDir, 'example/datasets/ne_110m_admin_0_countries.geojson'), { maxAge: '7d' }));
 }
 if (threeGlobeDir) app.use('/vendor/img', express.static(path.join(threeGlobeDir, 'example/img'), { maxAge: '7d' }));
+
+// Lettertypes (lokaal meegeleverd)
+const FONTS = {
+  'hanken.woff2': '@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2'
+};
+app.get('/fonts/:file', (req, res) => {
+  const rel = FONTS[req.params.file];
+  if (!rel) return res.status(404).end();
+  res.sendFile(path.join(__dirname, 'node_modules', rel), { maxAge: '30d' });
+});
 
 /* ---------- Eigen iconen uit config/icons ---------- */
 app.use('/icons', express.static(path.join(CONFIG_DIR, 'icons'), { maxAge: '1d' }));

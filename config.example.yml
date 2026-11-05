@@ -35,6 +35,7 @@ widgets:
   todos: true
   bookmarks: true
   world: true        # tabblad met de wereldbol
+  earth: true        # draaiende aarde (dag/nacht) bovenaan het dashboard
 
 # Iconen:
 #  - naam van https://github.com/walkxcode/dashboard-icons (bijv. "plex", "jellyfin")

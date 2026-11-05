@@ -44,7 +44,10 @@ applyTheme(getTheme());
 /* ---------- Klok & begroeting ---------- */
 function tick() {
   const now = new Date();
-  $('#clock').textContent = now.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
+  const pad = (n) => String(n).padStart(2, '0');
+  $('#clock-hm').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  $('#clock-s').textContent = pad(now.getSeconds());
+  $('#clock').setAttribute('datetime', now.toISOString());
   const ds = now.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   $('#date').textContent = ds[0].toUpperCase() + ds.slice(1);
   const h = now.getHours();
@@ -58,11 +61,11 @@ function iconHtml(icon, name) {
     if (/^(https?:)?\/\//.test(icon) || icon.startsWith('/')) return `<img src="${esc(icon)}" alt="" loading="lazy">`;
     if (/^[a-z0-9-]+$/i.test(icon)) {
       const src = `https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons/png/${icon.toLowerCase()}.png`;
-      return `<img src="${src}" alt="" loading="lazy" onerror="this.replaceWith(document.createTextNode('${esc(name[0] || '?')}'))">`;
+      return `<img src="${src}" alt="" loading="lazy" onerror="this.outerHTML=Icons.get('app')">`;
     }
-    return esc(icon); // emoji
+    return `<span class="emo">${esc(icon)}</span>`;
   }
-  return esc((name || '?')[0].toUpperCase());
+  return Icons.get('app');
 }
 
 /* ---------- Services ---------- */
@@ -70,7 +73,7 @@ function renderServices() {
   const el = $('#services');
   el.innerHTML = (config.services || []).map((g) => `
     <div class="group">
-      <h2 class="section-title">${esc(g.group)}</h2>
+      <h2 class="section-title">${esc(g.group)} <span class="count">${g.items.length}</span></h2>
       <div class="services">
         ${g.items.map((s) => `
           <a class="service" href="${esc(s.url)}" target="_blank" rel="noopener" data-name="${esc(s.name)}" data-search="${esc((s.name + ' ' + (s.description || '') + ' ' + g.group).toLowerCase())}">
@@ -80,7 +83,7 @@ function renderServices() {
               <div class="desc">${esc(s.description || hostOf(s.url))}</div>
               <div class="uptime"></div>
             </div>
-            <span class="dot" title="Controleren…"></span>
+            <div class="state"><span class="dot" title="Controleren…"></span><span class="ms"></span></div>
           </a>`).join('')}
       </div>
     </div>`).join('');
@@ -95,11 +98,14 @@ async function refreshStatus() {
     const dot = a.querySelector('.dot');
     if (!s) return;
     dot.className = 'dot ' + (s.up ? 'up' : 'down');
-    dot.title = s.up ? `Online · ${s.ms} ms · HTTP ${s.code}` : `Offline · ${s.error || 'HTTP ' + s.code}`;
+    dot.title = s.up ? `Online, ${s.ms} ms (HTTP ${s.code})` : `Offline: ${s.error || 'HTTP ' + s.code}`;
+    a.querySelector('.ms').textContent = s.up ? `${s.ms} ms` : 'offline';
     const up = s.history.filter(Boolean).length;
     a.querySelector('.uptime').innerHTML = s.history.map((h) => `<i class="${h ? '' : 'd'}"></i>`).join('');
     a.querySelector('.uptime').title = `Uptime laatste ${s.history.length} checks: ${Math.round((up / s.history.length) * 100)}%`;
   });
+  const all = Object.values(data);
+  if (all.length) $('#hs-services').innerHTML = `${all.filter((x) => x.up).length}<small> van ${all.length}</small>`;
 }
 
 /* ---------- Bladwijzers ---------- */
@@ -147,43 +153,48 @@ document.addEventListener('keydown', (e) => {
 
 /* ---------- Weer ---------- */
 const WMO = {
-  0: ['☀️', 'Helder'], 1: ['🌤️', 'Overwegend helder'], 2: ['⛅', 'Half bewolkt'], 3: ['☁️', 'Bewolkt'],
-  45: ['🌫️', 'Mist'], 48: ['🌫️', 'Rijpmist'], 51: ['🌦️', 'Lichte motregen'], 53: ['🌦️', 'Motregen'], 55: ['🌧️', 'Zware motregen'],
-  56: ['🌧️', 'IJzel'], 57: ['🌧️', 'IJzel'], 61: ['🌦️', 'Lichte regen'], 63: ['🌧️', 'Regen'], 65: ['🌧️', 'Zware regen'],
-  66: ['🌧️', 'IJzel'], 67: ['🌧️', 'IJzel'], 71: ['🌨️', 'Lichte sneeuw'], 73: ['🌨️', 'Sneeuw'], 75: ['❄️', 'Zware sneeuw'],
-  77: ['🌨️', 'Sneeuwkorrels'], 80: ['🌦️', 'Buien'], 81: ['🌧️', 'Buien'], 82: ['⛈️', 'Zware buien'],
-  85: ['🌨️', 'Sneeuwbuien'], 86: ['❄️', 'Sneeuwbuien'], 95: ['⛈️', 'Onweer'], 96: ['⛈️', 'Onweer met hagel'], 99: ['⛈️', 'Onweer met hagel']
+  0: 'Helder', 1: 'Overwegend helder', 2: 'Half bewolkt', 3: 'Bewolkt', 45: 'Mist', 48: 'Rijpmist',
+  51: 'Lichte motregen', 53: 'Motregen', 55: 'Zware motregen', 56: 'IJzel', 57: 'IJzel',
+  61: 'Lichte regen', 63: 'Regen', 65: 'Zware regen', 66: 'IJzel', 67: 'IJzel',
+  71: 'Lichte sneeuw', 73: 'Sneeuw', 75: 'Zware sneeuw', 77: 'Sneeuwkorrels',
+  80: 'Buien', 81: 'Buien', 82: 'Zware buien', 85: 'Sneeuwbuien', 86: 'Sneeuwbuien',
+  95: 'Onweer', 96: 'Onweer met hagel', 99: 'Onweer met hagel'
 };
-const wmo = (c, day = 1) => { const w = WMO[c] || ['🌡️', 'Onbekend']; return [!day && c <= 1 ? '🌙' : w[0], w[1]]; };
+const wmo = (c) => WMO[c] || 'Onbekend';
 const hhmm = (iso) => iso.slice(11, 16);
 
 async function refreshWeather() {
   let d;
   try { d = await api('/api/weather'); } catch (e) { $('#weather').innerHTML = `<div class="empty">Weer niet beschikbaar (${esc(e.message)})</div>`; return; }
   const c = d.current;
-  const [icon, desc] = wmo(c.weather_code, c.is_day);
+  const desc = wmo(c.weather_code);
   // Regenwaarschuwing voor de komende 3 uur
   const idx = d.hourly.time.findIndex((t) => t >= c.time.slice(0, 13));
   let rain = '';
   for (let i = Math.max(idx, 0); i < idx + 3 && i < d.hourly.time.length; i++) {
-    if (d.hourly.precipitation_probability[i] >= 50) { rain = `☔ Kans op regen rond ${hhmm(d.hourly.time[i])} (${d.hourly.precipitation_probability[i]}%) — neem een paraplu mee`; break; }
+    if (d.hourly.precipitation_probability[i] >= 50) { rain = `Regen verwacht rond ${hhmm(d.hourly.time[i])}, kans ${d.hourly.precipitation_probability[i]}%. Neem een paraplu mee.`; break; }
   }
+  $('#hero-weather').textContent = `${Math.round(c.temperature_2m)}° en ${desc.toLowerCase()}${config.weather.location ? ' in ' + config.weather.location : ''}`;
   $('#weather').innerHTML = `
     <div class="w-now">
-      <div class="w-icon">${icon}</div>
-      <div><div class="w-temp">${Math.round(c.temperature_2m)}°</div><div class="w-desc">${desc} · voelt als ${Math.round(c.apparent_temperature)}°</div></div>
+      ${Icons.weather(c.weather_code, c.is_day, 'w-icon')}
+      <div class="w-temp">${Math.round(c.temperature_2m)}°</div>
+      <div class="w-desc">${desc}<br><span>Voelt als ${Math.round(c.apparent_temperature)}°</span></div>
     </div>
-    <div class="w-meta">
-      <span>💧 ${c.relative_humidity_2m}%</span><span>💨 ${Math.round(c.wind_speed_10m)} km/u</span>
-      <span>🌅 ${hhmm(d.daily.sunrise[0])}</span><span>🌇 ${hhmm(d.daily.sunset[0])}</span>
-    </div>
-    ${rain ? `<div class="w-rain">${rain}</div>` : ''}
+    <dl class="w-meta">
+      <div><dt>Vochtigheid</dt><dd>${c.relative_humidity_2m}%</dd></div>
+      <div><dt>Wind</dt><dd>${Math.round(c.wind_speed_10m)} km/u</dd></div>
+      <div><dt>Zon op</dt><dd>${hhmm(d.daily.sunrise[0])}</dd></div>
+      <div><dt>Zon onder</dt><dd>${hhmm(d.daily.sunset[0])}</dd></div>
+    </dl>
+    ${rain ? `<p class="w-rain">${rain}</p>` : ''}
     <div class="w-days">
       ${d.daily.time.map((t, i) => `
-        <div>
-          <div class="d">${i === 0 ? 'vandaag' : new Date(t + 'T12:00').toLocaleDateString(LOCALE, { weekday: 'short' })}</div>
-          <div class="e" title="${wmo(d.daily.weather_code[i])[1]} · ${d.daily.precipitation_probability_max[i] ?? 0}% regen">${wmo(d.daily.weather_code[i])[0]}</div>
-          <div>${Math.round(d.daily.temperature_2m_max[i])}° <span class="lo">${Math.round(d.daily.temperature_2m_min[i])}°</span></div>
+        <div title="${wmo(d.daily.weather_code[i])}, ${d.daily.precipitation_probability_max[i] ?? 0}% kans op regen">
+          <div class="d">${i === 0 ? 'Vandaag' : new Date(t + 'T12:00').toLocaleDateString(LOCALE, { weekday: 'short' }).replace('.', '')}</div>
+          ${Icons.weather(d.daily.weather_code[i], 1, 'e')}
+          <div class="hi">${Math.round(d.daily.temperature_2m_max[i])}°</div>
+          <div class="lo">${Math.round(d.daily.temperature_2m_min[i])}°</div>
         </div>`).join('')}
     </div>`;
 }
@@ -197,7 +208,7 @@ const statBar = (label, pct, right) => `
   <div class="bar"><div class="${level(pct)}" style="width:${Math.min(100, pct).toFixed(1)}%"></div></div></div>`;
 const cpuHistory = [];
 function spark(vals) {
-  if (vals.length < 2) return '';
+  if (vals.length < 6) return '';
   const w = 300, h = 36, step = w / 39;
   const pts = vals.map((v, i) => [(i + 40 - vals.length) * step, h - (v / 100) * (h - 2) - 1]);
   const line = 'M' + pts.map((p) => p.map((n) => n.toFixed(1)).join(',')).join('L');
@@ -210,14 +221,16 @@ async function refreshSystem() {
   cpuHistory.push(s.cpu.usage); if (cpuHistory.length > 40) cpuHistory.shift();
   $('#sys-host').textContent = s.hostname;
   const memPct = (s.memory.used / s.memory.total) * 100;
+  $('#hs-cpu').innerHTML = `${s.cpu.usage}<small>%</small>`;
+  $('#hs-mem').innerHTML = `${Math.round(memPct)}<small>%</small>`;
   $('#system').innerHTML = `
-    ${statBar('CPU', s.cpu.usage, `${s.cpu.usage}% · ${s.cpu.cores} cores`)}
+    ${statBar('CPU', s.cpu.usage, `${s.cpu.usage}% van ${s.cpu.cores} cores`)}
     ${spark(cpuHistory)}
     ${statBar('Geheugen', memPct, `${fmtBytes(s.memory.used)} / ${fmtBytes(s.memory.total)}`)}
     ${s.disks.map((d) => statBar(d.name, (d.used / d.total) * 100, `${fmtBytes(d.used)} / ${fmtBytes(d.total)}`)).join('')}
     <div class="sys-grid">
       <div>Uptime<b>${fmtUptime(s.uptime)}</b></div>
-      <div>Temperatuur<b>${s.temperature != null ? Math.round(s.temperature) + '°C' : '—'}</b></div>
+      <div>Temperatuur<b>${s.temperature != null ? Math.round(s.temperature) + '°C' : 'n.v.t.'}</b></div>
       <div>Download<b>${fmtBytes(s.network.rx)}/s</b></div>
       <div>Upload<b>${fmtBytes(s.network.tx)}/s</b></div>
       <div class="wide">Load (1/5/15)<b>${s.load.map((l) => l.toFixed(2)).join(' ')}</b></div>
@@ -232,8 +245,8 @@ async function refreshTodos() {
     <li class="${t.done ? 'done' : ''}" data-id="${esc(t.id)}">
       <input type="checkbox" ${t.done ? 'checked' : ''} aria-label="Afgerond">
       <span class="t">${esc(t.text)}</span>
-      <button class="del" title="Verwijderen" aria-label="Verwijderen">×</button>
-    </li>`).join('') : '<li class="empty">Niets te doen 🎉</li>';
+      <button class="del" title="Verwijderen" aria-label="Verwijderen"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+    </li>`).join('') : '<li class="empty">Geen open taken</li>';
 }
 $('#todo-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -248,7 +261,7 @@ $('#todos').addEventListener('click', async (e) => {
   if (!li) return;
   const id = li.dataset.id;
   if (e.target.matches('input[type=checkbox]')) await api(`/api/todos/${id}`, { method: 'PATCH', body: JSON.stringify({ done: e.target.checked }) });
-  else if (e.target.matches('.del')) await api(`/api/todos/${id}`, { method: 'DELETE' });
+  else if (e.target.closest('.del')) await api(`/api/todos/${id}`, { method: 'DELETE' });
   else return;
   refreshTodos();
 });
@@ -270,8 +283,8 @@ async function refreshDocker() {
       <div class="n"><div>${esc(c.name)}</div><div>${esc(c.status)}</div></div>
       ${config.docker.allowActions ? `<div class="acts">
         ${c.state === 'running'
-          ? `<button data-a="restart" title="Herstarten">↻</button><button data-a="stop" title="Stoppen">■</button>`
-          : `<button data-a="start" title="Starten">▶</button>`}
+          ? `<button data-a="restart" title="Herstarten" aria-label="Herstarten"><svg viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.3-5.2"/><path d="M19 4.5V9h-4.5"/></svg></button><button data-a="stop" title="Stoppen" aria-label="Stoppen"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg></button>`
+          : `<button data-a="start" title="Starten" aria-label="Starten"><svg viewBox="0 0 24 24"><path d="M8 6.5v11l9-5.5z"/></svg></button>`}
       </div>` : ''}
     </li>`).join('') || '<li class="empty">Geen containers</li>';
 }
@@ -287,6 +300,45 @@ $('#docker').addEventListener('click', async (e) => {
   refreshDocker();
 });
 
+/* ---------- Aarde in de hero ---------- */
+function loadScriptOnce(src) {
+  if (!window.__scripts) window.__scripts = {};
+  if (!window.__scripts[src]) {
+    window.__scripts[src] = new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('kon ' + src + ' niet laden'));
+      document.head.appendChild(el);
+    });
+  }
+  return window.__scripts[src];
+}
+window.loadScriptOnce = loadScriptOnce;
+
+async function initHeroEarth() {
+  const el = $('#hero-earth');
+  try { await loadScriptOnce('/vendor/globe.gl.min.js'); } catch { el.remove(); return; }
+  const home = config.weather && config.weather.lat ? { lat: config.weather.lat, lng: config.weather.lng } : { lat: 30, lng: 5 };
+  const g = Globe({ animateIn: false, rendererConfig: { antialias: true, alpha: true } })(el)
+    .backgroundColor('rgba(0,0,0,0)')
+    .enablePointerInteraction(false)
+    .pointsData([])
+    .pointLat('lat').pointLng('lng').pointAltitude(0.004).pointRadius(0.35)
+    .pointColor((p) => ({ home: '#9cc3e6', wish: '#e8b25a', visited: '#7fd6a4' }[p.type] || '#fff'));
+  Earth.setup(g, { atmosphere: 0.16, cityLights: 2 });
+  g.renderer().setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  const c = g.controls();
+  c.enabled = false; c.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches; c.autoRotateSpeed = 0.18;
+  g.pointOfView({ lat: home.lat - 12, lng: home.lng - 20, altitude: 2.05 });
+  const size = () => g.width(el.clientWidth).height(el.clientHeight);
+  new ResizeObserver(size).observe(el); size();
+  api('/api/places').then((pl) => g.pointsData(pl)).catch(() => {});
+  // Pauzeren als het tabblad niet zichtbaar is
+  const pause = () => { const hidden = document.hidden || $('#view-dashboard').hidden; hidden ? g.pauseAnimation() : g.resumeAnimation(); };
+  document.addEventListener('visibilitychange', pause);
+  window.addEventListener('hashchange', pause);
+  requestAnimationFrame(() => el.classList.add('ready'));
+}
+
 /* ---------- Start ---------- */
 (async function init() {
   try { config = await api('/api/config'); } catch { config = {}; }
@@ -299,6 +351,7 @@ $('#docker').addEventListener('click', async (e) => {
   refreshStatus(); setInterval(refreshStatus, 15000);
 
   const w = config.widgets;
+  if (w.earth !== false) initHeroEarth(); else $('#hero-earth').remove();
   if (w.world === false) document.querySelector('.tabs').hidden = true;
   if (w.weather !== false && config.weather && config.weather.enabled) {
     $('#weather-card').hidden = false; $('#weather-loc').textContent = config.weather.location;

@@ -1,0 +1,24 @@
+services:
+  dashboard:
+    build: .
+    image: home-dashboard:latest
+    container_name: home-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - TZ=Europe/Amsterdam
+      - HOST_PROC=/host/proc
+      - HOST_SYS=/host/sys
+      # Optioneel: inloggen met gebruikersnaam/wachtwoord
+      # - AUTH_USER=timon
+      # - AUTH_PASSWORD=verander-mij
+      # Optioneel: naam die bij "Server" staat
+      # - HOST_NAME=mijn-server
+    volumes:
+      - ./config:/app/config            # config.yml + eigen iconen
+      - ./data:/app/data                # takenlijst
+      - /proc:/host/proc:ro             # CPU, geheugen, netwerk van de host
+      - /sys:/host/sys:ro               # temperatuur
+      - /:/host/root:ro                 # schijfruimte
+      - /var/run/docker.sock:/var/run/docker.sock   # containers tonen (weglaten = uit)

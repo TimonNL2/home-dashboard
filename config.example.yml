@@ -1,0 +1,91 @@
+# ------------------------------------------------------------
+#  Home Dashboard configuratie
+#  Wijzigingen worden automatisch geladen: opslaan en browser verversen.
+# ------------------------------------------------------------
+
+title: Home
+name: Timon            # voor de begroeting ("Goedemorgen, Timon")
+
+search:
+  engine: https://duckduckgo.com/?q=   # of https://www.google.com/search?q=
+
+weather:
+  enabled: true
+  name: Amsterdam
+  latitude: 52.37
+  longitude: 4.89
+
+system:
+  # Schijven die je wilt zien. Paden zijn binnen de container,
+  # zie docker-compose.yml (host / is gemount op /host/root).
+  disks:
+    - name: Systeem
+      path: /host/root
+    # - name: Data
+    #   path: /host/mnt/data
+
+docker:
+  enabled: true
+  allowActions: false   # true = start/stop/herstart knoppen in het dashboard
+
+widgets:
+  system: true
+  weather: true
+  docker: true
+  todos: true
+  bookmarks: true
+
+# Iconen:
+#  - naam van https://github.com/walkxcode/dashboard-icons (bijv. "plex", "jellyfin")
+#  - een emoji ("🎬")
+#  - een volledige URL, of /icons/bestand.png (bestand in config/icons/)
+# check: false        -> geen status check
+# check: http://...   -> ander adres checken dan de link (bijv. intern IP)
+services:
+  - group: Media
+    items:
+      - name: Jellyfin
+        url: http://192.168.1.10:8096
+        icon: jellyfin
+        description: Films & series
+      - name: Plex
+        url: http://192.168.1.10:32400/web
+        icon: plex
+  - group: Downloads
+    items:
+      - name: Sonarr
+        url: http://192.168.1.10:8989
+        icon: sonarr
+      - name: Radarr
+        url: http://192.168.1.10:7878
+        icon: radarr
+      - name: qBittorrent
+        url: http://192.168.1.10:8080
+        icon: qbittorrent
+  - group: Netwerk & Beheer
+    items:
+      - name: Pi-hole
+        url: http://192.168.1.2/admin
+        icon: pi-hole
+      - name: Portainer
+        url: https://192.168.1.10:9443
+        icon: portainer
+      - name: Home Assistant
+        url: http://192.168.1.10:8123
+        icon: home-assistant
+
+bookmarks:
+  - group: Dagelijks
+    links:
+      - name: Gmail
+        url: https://mail.google.com
+      - name: YouTube
+        url: https://youtube.com
+      - name: NOS
+        url: https://nos.nl
+  - group: Dev
+    links:
+      - name: GitHub
+        url: https://github.com
+      - name: Claude
+        url: https://claude.ai

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f1115">
+  <title>Home</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <div class="greeting" id="greeting">Hallo</div>
+        <div class="date" id="date"></div>
+      </div>
+      <div class="top-right">
+        <div class="clock" id="clock">--:--</div>
+        <button class="icon-btn" id="theme-btn" title="Thema wisselen" aria-label="Thema wisselen"></button>
+      </div>
+    </header>
+
+    <form class="search" id="search-form" autocomplete="off">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="text" placeholder="Zoeken of services filteren…  ( / )" aria-label="Zoeken">
+      <kbd>Enter</kbd>
+    </form>
+
+    <main class="layout">
+      <section class="main-col">
+        <div id="services"></div>
+        <div id="bookmarks-wrap" hidden>
+          <h2 class="section-title">Bladwijzers</h2>
+          <div id="bookmarks" class="bookmarks"></div>
+        </div>
+      </section>
+
+      <aside class="side-col">
+        <div class="card" id="weather-card" hidden>
+          <div class="card-head"><h3>Weer</h3><span class="muted" id="weather-loc"></span></div>
+          <div id="weather" class="weather"><div class="skeleton"></div></div>
+        </div>
+
+        <div class="card" id="system-card" hidden>
+          <div class="card-head"><h3>Server</h3><span class="muted" id="sys-host"></span></div>
+          <div id="system"><div class="skeleton"></div></div>
+        </div>
+
+        <div class="card" id="todo-card" hidden>
+          <div class="card-head"><h3>Takenlijst</h3><button class="link-btn" id="todo-clear" title="Afgeronde taken verwijderen">Opruimen</button></div>
+          <form id="todo-form" class="todo-form">
+            <input id="todo-input" type="text" placeholder="Nieuwe taak…" maxlength="500" aria-label="Nieuwe taak">
+          </form>
+          <ul id="todos" class="todos"></ul>
+        </div>
+
+        <div class="card" id="docker-card" hidden>
+          <div class="card-head"><h3>Containers</h3><span class="muted" id="docker-count"></span></div>
+          <ul id="docker" class="docker"></ul>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
